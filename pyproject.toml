@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "sparkbox"
+version = "0.1.0"
+description = ""
+authors = ["Cailey Kerley <cailey.kerley@trillianthealth.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pyspark = "^3.4"
+jupyterlab = "*"
+pandas = "*"
+pyarrow = "*"
+matplotlib ="*"
+seaborn ="*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
