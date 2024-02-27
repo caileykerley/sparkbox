@@ -47,8 +47,14 @@
   - `reduceByKey`, `aggregateByKey`, `combineByKey` both use combiners (preferred)
     - `groupByKey` doesn't!
 
+
 ### RDD Actions
 - `take` gets a certain number of elements, seems ordered (ie always takes the first n)
+  - `takeOrdered` get n elements from RDD ordered asc/dec or by optional key
+  - `takeSample` get n random elements from RDD
+    - withReplacement: True/False
+    - num: int number of records
+    - seed: optional float
 - `collect` collect all elements into a list
 
 #### total aggregations
@@ -60,7 +66,7 @@
 
 #### row-level transforms
 - `map` applies function to all rows
-- `flatMap` same as map, but then flattens results
+- `flatMap` same as map, but then flattens results (returns a list?)
 - `filter` it.... filters
 - `mapValues` maps a function to the values of each key in the rdd (inputs/returns key-value pairs)
 
@@ -99,3 +105,24 @@
 - `sortByKey` sorts... by key
   - input: (K,V)
   - output: (K,V)
+
+### ranking
+- no direct way to do this with RDD, but you can accomplish it by combining transforms
+  - sortByKey + take
+  - takeOrdered or top
+- rank within groups
+  - groupByKey + flatmap?
+
+### set ops
+- requires similarly structured RDDs
+- `union` get all elements from both RDDs
+  - does NOT return distinct elements
+- `intersection` get common elements from both RDDs
+  - returns distinct elements
+- `subtract` get values in left RDD that are not in right RDD
+
+### sampling
+  - `sample` get a random sample of records
+    - withReplacement: True/False
+    - fraction: float (0,1)
+    - seed: optional float

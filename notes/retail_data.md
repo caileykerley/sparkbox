@@ -13,3 +13,11 @@
 - quantity
 - subtotal
 - product price
+
+### Products
+- product ID
+- category ID
+- product name
+- product description
+- price
+- image url

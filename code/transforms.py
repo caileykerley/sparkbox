@@ -1,25 +1,34 @@
 from pyspark.sql import SparkSession
 from operator import add
+from typing import List, Optional
 
 spark = SparkSession.builder.master('local').appName('Test').getOrCreate()
 
-orders = spark.sparkContext.textFile('data/retail/orders')
-ORDER_ID_ORDERS = 0
+orders = spark.sparkContext.textFile('../data/retail/orders')
+O_ORDER_ID = 0
 ORDER_DATE = 1
 CUSTOMER_ID = 2
 ORDER_STATUS = 3
 
-order_items = spark.sparkContext.textFile('data/retail/order_items')
+order_items = spark.sparkContext.textFile('../data/retail/order_items')
 ITEM_ID = 0
-ORDER_ID_ITEMS = 1
-PRODUCT_ID = 2
+OT_ORDER_ID = 1
+OT_PRODUCT_ID = 2
 QUANTITY = 3
 SUBTOTAL = 4
-PRODUCT_PRICE = 5
+OT_PRODUCT_PRICE = 5
+
+products = spark.sparkContext.textFile('../data/retail/products')
+P_PRODUCT_ID = 0
+CATEGORY_ID = 1
+PRODUCT_NAME = 2
+PRODUCT_DESCR = 3
+P_PRODUCT_PRICE = 4
+PRODUCT_IMAGE = 5
 
 
 # pull out order number as the key
-def csv_2_kv(row, ix, vix=None):
+def csv_2_kv(row: str, ix: int, vix: Optional[int] = None):
     parts = row.split(',')
     if vix is None:
         return parts[ix], parts
@@ -27,8 +36,13 @@ def csv_2_kv(row, ix, vix=None):
         return parts[ix], parts[vix]
 
 
-orders_kv = orders.map(lambda row: csv_2_kv(row, ORDER_ID_ORDERS))
-order_items_kv = order_items.map(lambda row: csv_2_kv(row, ORDER_ID_ITEMS))
+def print_take(items: List):
+    for item in items:
+        print(item)
+
+
+orders_kv = orders.map(lambda row: csv_2_kv(row, O_ORDER_ID))
+order_items_kv = order_items.map(lambda row: csv_2_kv(row, OT_ORDER_ID))
 
 """
 # joins
@@ -98,16 +112,67 @@ status_counts = orders.map(lambda row: csv_2_kv(row, ORDER_STATUS)).countByKey()
 for key, value in sorted(status_counts.items(), key=lambda x: x[1], reverse=True):
     print(f"{key}: {value}")
 
-"""
 
 # sortByKey
 print(">>> sort orders by customer_id")
-for vals in orders.map(lambda row: csv_2_kv(row, CUSTOMER_ID)).sortByKey().take(5):
-    print(vals[1])
+print_take(orders.map(lambda row: csv_2_kv(row, CUSTOMER_ID)).sortByKey().take(5))
 
 print(">>> sort orders by customer_id and status")
 multi_key = orders.map(lambda row: ((row.split(',')[CUSTOMER_ID], row.split(',')[ORDER_STATUS]),row))
-for vals in multi_key.sortByKey().take(7):
-    print(vals[1])
+print_take(multi_key.sortByKey().take(7))
 
 
+# ranking
+print(">>> top 5 products with highest prices (two ways)")
+print_take(
+    products.filter(
+        lambda row: row.split(',')[P_PRODUCT_PRICE] != ''
+    ).map(
+        lambda row: (float(row.split(',')[P_PRODUCT_PRICE]), row)
+    ).sortByKey(ascending=False).take(5)
+)
+
+print_take(
+    products.filter(
+        lambda row: row.split(',')[P_PRODUCT_PRICE] != ''
+    ).takeOrdered(5, key=lambda row: -float(row.split(',')[P_PRODUCT_PRICE]))  # type: ignore
+)
+
+print(">>> top 3 products with highest prices in each category")
+# if you use flatMap below, it returns a flattened list of all results from all categories
+# if you use map, it returns nested lists, one nested list contains the results from a single category
+print_take(
+    products.filter(
+        lambda row: row.split(',')[P_PRODUCT_PRICE] != ''
+    ).map(
+        lambda row: (row.split(',')[CATEGORY_ID], row)  # for some reason csv2kv makes groupByKey die
+    ).groupByKey().map(
+        lambda krow: sorted(krow[1], key=lambda row: float(row.split(',')[P_PRODUCT_PRICE]), reverse=True)[:3]
+    ).collect()
+)
+
+"""
+
+# set ops
+print(">>> get number of customers who placed orders in July & August")
+july_customers = orders.filter(
+        lambda row: row.split(',')[ORDER_DATE].split('-')[1] == '07'
+    ).map(
+        lambda row: row.split(',')[CUSTOMER_ID]
+    )
+
+august_customers = orders.filter(
+        lambda row: row.split(',')[ORDER_DATE].split('-')[1] == '08'
+    ).map(
+        lambda row: row.split(',')[CUSTOMER_ID]
+    )
+n_customers = july_customers.union(august_customers).distinct().count()
+print(f"{n_customers} customers")
+
+print(">>> get number of customers who placed orders in BOTH July & August")
+n_customers = july_customers.intersection(august_customers).count()
+print(f"{n_customers} customers")
+
+print(">>> get number of customers who placed orders July but NOT in August")
+n_customers = july_customers.subtract(august_customers).count()
+print(f"{n_customers} customers")
