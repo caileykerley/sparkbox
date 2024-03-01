@@ -101,19 +101,19 @@
   - input: (K,V)
   - output: Collection Dictionary - (K,int)
 
-### sorting
+#### sorting
 - `sortByKey` sorts... by key
   - input: (K,V)
   - output: (K,V)
 
-### ranking
+#### ranking
 - no direct way to do this with RDD, but you can accomplish it by combining transforms
   - sortByKey + take
   - takeOrdered or top
 - rank within groups
   - groupByKey + flatmap?
 
-### set ops
+#### set ops
 - requires similarly structured RDDs
 - `union` get all elements from both RDDs
   - does NOT return distinct elements
@@ -121,8 +121,42 @@
   - returns distinct elements
 - `subtract` get values in left RDD that are not in right RDD
 
-### sampling
-  - `sample` get a random sample of records
-    - withReplacement: True/False
-    - fraction: float (0,1)
-    - seed: optional float
+#### sampling
+- `sample` get a random sample of records
+  - withReplacement: True/False
+  - fraction: float (0,1)
+  - seed: optional float
+
+
+### Partitions and Coalesces
+- datasets are big, so partitioned across multiple machines
+- one partion may NOT span more than 1 machine
+- spark automatically partitions, but you can also configure optimal num of partitions
+- `getNumPartitions` tells you # partitions
+- `glom` returns RDD created by coalescing all elements within each partition into a list
+- `coalesce`: reduce number of partitions
+  - good for cases where a filter reduces dataset size
+  - does not guarantee equal sized partitions unless shuffle=True
+  - shuffling is optional, so can be more efficient than repartition
+  - can be used for increasing num partitions only when shuffle=True
+- `repartition`: shuffles and returns rdd with exact number of partitions requested
+  - spark is more efficient when partitions are around the same size
+  - good to use to ensure equal sized partitions
+- `repartitionAndSortWithinPartitions`
+  - repartition according to a given partition function and sort within each resulting partition by record key
+- it's good to repartition/coalesce after joining/filtering to make partitions more efficient
+
+
+## Execution Architecture
+
+- application: user spark application
+- job: parallel computation made of multiple tasks triggered by spark action
+- stage: sequential steps in job execution, each stage is made of up tasks and depends on previous stage completion
+- task: unit of work that will be sent to one executor
+- application jar: jar containing spark application code
+- driver program: the process running main() and creating spark context
+- cluster manager: external service for acquiring resources on cluster (spark is agnostic to cluster manager)
+- deploy mode: distinguishes where driver process runs; "cluster" - launches inside cluster, "client" - launches outside cluster
+- worker node: any cluster node that can run tasks
+- executor: process on worker node that runs task and manages data
+- cache: job resources needed by workers for task execution
