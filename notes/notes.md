@@ -148,7 +148,6 @@
 
 
 ## Execution Architecture
-
 - application: user spark application
 - job: parallel computation made of multiple tasks triggered by spark action
 - stage: sequential steps in job execution, each stage is made of up tasks and depends on previous stage completion
@@ -160,3 +159,52 @@
 - worker node: any cluster node that can run tasks
 - executor: process on worker node that runs task and manages data
 - cache: job resources needed by workers for task execution
+
+### Narrow vs Wide Transforms
+- *narrow* transforms convert each input partition into a single output partition
+  - spark merges all narrow transforms in one stage of execution 
+    - eg map -> filter -> map, will all get executed at the same time - very efficient
+  - examples: map, filter
+  - fast, no shuffling
+- *wide* input partitions may contribute to many output partitions
+  - each wide transform creates new stage
+  - slower, shuffling
+  - examples: groupByKey, aggregateByKey, join, distinct, repartition 
+
+### DAG Scheduler
+- directed acyclic graph
+- used to solve for order of task execution
+- after each code line, spark finds logical execution plan, but if no action, it stops here
+  - made of logical relationship between input and intermediate rdds
+- once an action is encountered, spark translates that to the physical execution plan
+  - made of actual tasks and stages
+- then, all tasks bundled and sent to task scheduler
+- RDD lineage
+  - each rdd maintains a pointer to one or more parent along with metadata about its relationship to the parent
+  - used for recovery if something fails
+  - can be printed with toDebugString (prints logical execution plan)
+- stages that run independently may be run in parallel
+
+## RDD Persistance 
+- `StorageLevel` api for setting storage level
+  - disk, memory, off-heap (memory outside the JVM)
+  - serialization
+  - use replicated storage level for fast fault recovery
+- `persist` set RDD storage level to persist its values after the first time its computed
+  - storage level may only be set if RDD does not already have a storage level
+  - default: memory only
+- `is_cached` check whether/not RDD will persist
+- `unpersist` un-persist an RDD
+- if data can fit in memory, leave it there (most CPU efficient)
+
+## Shared Variables
+- variables that need to be used in parallel operations
+- broadcast variables
+  - var that is read-only and cached on each machine
+  - immutable, cached on each worker only once
+  - efficient, needs to fit in memory
+  - closure - serialized information about variables or methods sent to each executor
+- accumulator variables
+  - shared var used for sum and counter operations
+  - shared by all executors to update using associative/commutative operations
+  - best to only use these inside actions
