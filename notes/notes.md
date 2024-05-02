@@ -3,7 +3,7 @@
 - decouples processing and storage
     - spark does all processing in RAM before writing output to disk (better performance than prev solutions)
 - agnostic to cluster managers
-    - outs is kubernetes
+    - ours is kubernetes
 - spark core: basic operations
 - spark SQL / Dataframes: batch processing
 - spark streaming: stream data processing
@@ -208,3 +208,25 @@
   - shared var used for sum and counter operations
   - shared by all executors to update using associative/commutative operations
   - best to only use these inside actions
+
+
+## Spark SQL Architecture
+- catalyst: builds & optimizes query program
+- tungsten: executes query program
+- trees: abstractions of user programs
+- expression: represents a new value that a user is calculating
+- logical plan: describes computation without defining how to conduct the computation
+- physical plan: describes computation with specific definitions for how to conduct the computation
+- transforms: rules applied to trees to simplify/optimize queries
+  - constant collapse, column pruning, etc
+- `explain` prints the logical & physical execution plans for debugging
+
+
+## SparkSession
+- As of Spark 2.0, SparkSession is the main entry point
+- `spark-submit` cli utility to run a pyspark app
+- default spark properties: `$SPARK_HOME/conf/spark-defaults.conf`
+
+### Common Functions
+- `version` spark version
+- `range` like native python range, but creates a spark DF instead of a list
