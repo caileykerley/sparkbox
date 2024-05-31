@@ -230,3 +230,11 @@
 ### Common Functions
 - `version` spark version
 - `range` like native python range, but creates a spark DF instead of a list
+- `createDataFrame` create a dataframe from a collection (list, dict), RDD or pandas df
+- `sql` runs the given SQL query on the dataframe
+  - example used `createOrReplaceTempView` and `createOrReplaceGlobalTempView` but I don't really get why
+- `table` returns the specified table (database? I know how this works on Databricks though) as a dataframe
+- `sparkContext` gets the spark context object
+- `conf` gets/sets spark config parameters (eg `spark.sql.shuffle.partitions`)
+- `udf` user-defined functions
+- `read` used to read data from external file systems
