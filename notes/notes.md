@@ -238,3 +238,28 @@
 - `conf` gets/sets spark config parameters (eg `spark.sql.shuffle.partitions`)
 - `udf` user-defined functions
 - `read` used to read data from external file systems
+- `catalog` API for accessing Spark SQL metadata
+  - get/set current database, list available databases
+  - list columns/tables, check cache, refresh table, recover partitions
+  - list & register functions
+  - drop global & temp views
+- `newSession` creates a new sparkSession with separate SQLConf, temp views, & UDFs, but shared SparkContext & table cache
+  - mainly used for keeping sessions with minor config differences & separating temp namespaces
+  - https://stackoverflow.com/questions/46541516/spark-what-is-the-use-of-creating-new-spark-sessions
+- `stop` kill underlying spark context
+
+## Dataframes
+- Dataset (data) organized into columns/rows (schema)
+- like RDD, Dataframes are distributed
+- like RDD, evaluation is lazy (eval isn't triggered until an action is called - eg `count`)
+- Dataframes are "immutable storage"
+  - dataframe can't be changed once created - instead, transformed & then (if cached or explicitly written) saved in new dataframe
+- unified API across all spark libs (spark sql, spark streaming, Mlib, GraphX)
+- supported in multiple languages (Scala, Python, Java, R)
+- feasible for **wide** files
+- supports structured & semi-structured data
+- levels of dataframe organization
+  - *schema*: name & type of each column in the dataset
+    - `df = spark.range(10)` <- fast way of making new dataframe
+  - *storage*: distributed across partitions; memory (serialized or deserialized), disk, off-heap or a combination of the 3
+  - *API*: used for processing data
