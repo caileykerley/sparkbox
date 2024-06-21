@@ -263,3 +263,156 @@
     - `df = spark.range(10)` <- fast way of making new dataframe
   - *storage*: distributed across partitions; memory (serialized or deserialized), disk, off-heap or a combination of the 3
   - *API*: used for processing data
+
+## Data Types
+`pyspark.sql.types`
+
+Common Types:
+- `IntegerType()` 4 byte signed integers
+- `FloatType()` 4 byte single-precision floating point
+- `DoubleType()` 8 byte double-precision floating point
+- `StringType()` character string values
+- `VarcharType(l)` variant of StringType with length limitation
+  - the memory space not used for strings shorter than `l` bytes is freed for more efficient memory usage
+- `CharType(l)` variant of VarcharType with fixed length
+  - no matter the string length, exactly `l` bytes will always be reserved for strings of this type
+  - fastest string type b/c no optimization with length, but not memory efficient
+- `BooleanType()` boolean values
+- `BinaryType()` byte sequence values
+- `TimestampeType()` date + time
+- `DateType()` date only
+- `ArrayType(elementType,containsNull)` list
+  - can only contain one type of data?
+- `MapType(keyType,valueType,containsNull)` dictionary
+- `StructType(fields)` structured data
+
+Special Values
+- None (Null)
+  - void, absent element
+  - valid for all datatypes 
+  - null values grouped together in groupby ops
+- Inf, -Inf (`FloatType.Infinity` or `DoubleType.Infinity`)
+- NaN
+  - only possible for numeric types
+  - typically the result of an impossible math operation (eg 1/0)
+  - Nan == Nan => True
+  - NaN values grouped together in groupby ops
+
+## DataFrame Rows & Columns
+
+### Rows
+- data is represented as rows/records
+- `pyspark.sql.Row` 
+- seems kind of like `Row` is a pyspark-friendly `NamedTuple`
+
+Functions
+- `count(value)` occurrence of value
+- `index(value)` returns first index of value
+- `asDict()` converts Row to dict
+
+### Columns
+- `pyspark.sql.Column`
+- select all columns: `df.select(F.col("*"))`
+- select one column
+  - `df.column`
+  - `df["column"]`
+  - `F.col("column")`
+- `alias` give a column a temporary name
+- sort column values
+  - `asc` sort ascending
+  - `desc` sort descending
+- `cast` converts a column between data types
+- `between` retrieves a range of values
+- `contains` / `startswith` / `endswith` string search
+- `like` / `rlike`
+  - SQL `like` / SQL `like` with regex matching
+- `eqNullSafe` equality that is safe for null values
+  - normal boolean checks don't check the null/none values
+- `substr` select a substring from a string
+- `getField` / `getItem` gets a field/item from structured columns (Struct, Map, Arrary types)
+- `when`/`otherwise` if/else basically
+
+
+## DF Transforms and Extractions
+### Transformations
+#### DataFrame APIs
+- Selection
+  - `select` select columns & apply functions to those columns
+  - `selectExpr` select with sql expressions
+    - good for accessing SQL functions that aren't in spark (example: stack)
+  - `withColumn` apply transforms & make a new column
+  - `withColumnRenamed` rename a column
+  - `drop` drops columns
+  - `dropDuplicates` drop duplicates (from all columns or a subset)
+- Filtering
+  - `filter` filter records using boolean expressions
+    - `where` is an alias for filter
+- Sorting
+  - `sort`
+  - `orderBy`
+  - `sortWithinPartitions` more cost-effective than global sort, good if your data is partitioned correctly
+- Set operators
+  - `union` set union (if multiple columns, used column order to merge values)
+  - `unionAll` supposed to be union w/ retained duplicates but doesn't work?
+  - `unionByName` performs union on columns with matching names
+  - `intersect` set intersection
+  - `intersectAll` same as intersection, but retains duplicates (again, doesn't seem to work?)
+  - `exceptAll` get rows present in one DF but not in another
+- `join`
+  - `inner` intersection of keys from both dataframes
+  - `outer` / `full` union of keys from both dataframes
+  - `left`/`right` only use keys from left/right dataframe
+  - `cross` join each left record to each right record
+    - if left has 2 records & right has 3 records, result will be 6 records
+    - doesn't require join keys
+    - has a dedicated API: `df1.crossJoin(df2)`
+  - `left_anti` get keys in left dataframe that are NOT in right dataframe
+    - does not join data from right dataframe
+  - `left_semi` inner join, but does not copy data from right dataframe
+    - more efficient than `inner` when you don't need the data in right dataframe
+  - self join
+    - join a dataframe to itself
+- aggregation
+  - `agg` for multiple aggregations at once
+  - `summary` summary stats (count, mean, min/max, etc)
+  - `avg` average
+  - `min`/`max`
+  - `sum`
+    - `sumDistinct` removes duplicates before summing
+  - `count`
+    - `countDistinct` removes duplicates before counting
+  - `first`/`last` get first/last record in the dataframe
+  - `collect_set`/`collect_list` collect all elements into a single set/list
+    - diff: set removes duplicate values
+  - `skewness`
+  - `variance`
+  - `stddev`
+- `groupBy`
+  - `pivot`/`unpivot` transfer rows -> columns & columns -> rows
+- `window`
+- `sample`
+
+#### DataFrame Built-in Functions
+- new columns
+- encryption
+- string
+- regex
+- date
+- null
+- collection
+- Na
+- math/stats
+- explode & flatten
+- formatting
+- JSON
+- other
+
+### Extraction
+- csv
+- text
+- parquet
+- orc
+- avro
+- json
+- hive
+- jdbc
