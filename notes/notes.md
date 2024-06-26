@@ -389,8 +389,47 @@ Functions
   - `stddev`
 - `groupBy`
   - `pivot`/`unpivot` transfer rows -> columns & columns -> rows
-- `window`
-- `sample`
+- Window
+  - operates on a group of rows & returns a single value for each input row
+  - `pyspark.sql.window`
+    - `Window`: `partitionBy` / `orderBy` / `rangeBetween` / `rowsBetween`
+    - `WindowSpec`: partitioning, ordering & frame boundaries; also has 4 above APIs
+      - `Window.partitionBy(df.dept)` >> returns a `WindowSpec` object
+    - Windowing consists of partitioning & then doing one of:
+      - Ranking
+        - `row_number`
+        - `rank` rank but gaps when there are ties
+        - `dense_rank` ranks without gaps
+        - `percent_rank` percentile - first row is 0, last row is 1
+        - `ntile` ntile group IDs \[1,n\] (ex: n=4, first quarter of values will get 1, 2nd quarter will get 2, etc)
+        - `cume_dist` cumulative distribution within window (fraction of rows at or below current row)
+      - Analytical
+        - works on multiple rows & returns one (unique?) value per row
+        - `lag` offset row value before current row value
+        - `lead` offset row value after current row value
+      - Aggregate
+        - works on multiple rows & returns one value for the group (copied to each input row)
+        - `avg`
+        - `sum`
+        - `min`
+        - `max`
+        - `count`
+        - `count`
+        - `First` returns the first value in the group
+        - `Last` returns the last non-null value it has seen as it progresses through the rows
+          - this return value is NOT the opposite of `first` - honestly not really sure what this is useful for
+  - `rangeBetween(start,end)` / `rowsBetween(start,end)`
+    - start & end are relative to the current row (ie start=0=current row; start=-1=previous row)
+    - `range` applies its boundaries on the row _values_
+    - `row` applies its boundaries on the row _index_ 
+- Sampling
+  - `sample` get a % sample from the dataframe, optionally with replacement
+- Other Agg functions
+  - `first` returns first value in a group (first non-null val when ignoreNulls=True)
+  - `greatest(*cols)` returns greatest val (one per row) from provided columns (skips null)
+  - `least`  returns least val (one per row) from provided columns (skips null)
+  - `skewness` calculated skew of grouped data
+  - `collect_list` collects all row vals into a list
 
 #### DataFrame Built-in Functions
 - new columns
