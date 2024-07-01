@@ -433,9 +433,92 @@ Functions
 
 #### DataFrame Built-in Functions
 - new columns
+  - window ranking functions (see previous windowing notes)
+  - `monotonically_increasing_id`
+    - a column of monotonically increasing 64-bit integers
+    - guaranteed to be monotonically increasing & unique, but not consecutive
+  - `lit`
+    - creates a static column with provided value
+  - `expr`
+    - executed the given string sql expression & returns the result as a Column
+  - `spark_partition_id`
+    - creates a column that shows the partition ID for each record
+  - `rand(seed)`
+    - generate random float column with iid samples from uniform distribution
+  - `randn(seed)`
+    - generate random float column with iid samples from standard normal distribution
 - encryption
+  - `sha1`
+    - returns hex string result for SHA-1 Family
+    - can only be used on string columns
+    - returns encrypted values for each record
+  - `sha2`
+    -  same as `sha1`, but returns hex string result for SHA-2 Family
+  - `hash(*cols)`
+    - any type od column
+    - calculated has code of given cols & returns an int column
 - string
+  - `split(col, pattern)`
+    - split strings according to pattern
+    - strings can ge regex
+    - returns a single column containing split list
+    - can access list elements using index: `F.split(F.col("mycol"),"-")[0]`
+  - `length`
+    - gets the length of the string
+  - `lower`/`upper`/`initcap`
+    - enforce lower/upper/title case of strings
+  - `ltrim`/`rtrim`/`trim`
+    - trim leading/trailing/all whitespace the string
+  - `lpad(col,len,pad)`/`rpad(col,len,pad)`
+    - pad string col to a certain length with a pad char to the left/right
+  - `reverse`
+    - reverses the string
+  - `repeat(col,n)`
+    - repeat the string n times
+  - `hex`
+    - compute hex value of the string
+  - `concat`
+    - concats multiple string columns together
+  - `concat_ws(sep, *cols)`
+    - concat string columns together using given seperator
+  - `substring(col,pos,len)`
+    - get a substring of length `len` starting at position `pos` 
+  - `substring_index(col,delim,count)`
+    - gets a substring based on counting instances of a delimiter
+    - if count is positive, returns everything to the left of the final delimiter occurrence
+    - if negative, returns everything to the right of the final delimiter occurrence
+    - example: str=`2014/04/26`
+      - delim=`/`, count=`1` => result=`2014`
+      - delim=`/`, count=`2` => result=`2014/04`
+      - delim=`/`, count=`-1` => result=`04/26`
+    - If no instances of delimiter are found, returns original string
+  - `instr(col,substr)`
+    - returns the location of the first occurrence of `substr` in the str
+    - 1-indexed
+    - 0 = not found
+    - example: str=`happy`, substr=`py` => result=`4`
+  - `locate(substr, col, pos=1)`
+    - similar to `instr` but only looks after position `pos` in the string
+    - example: str=`2024/05/24`
+      - substr=`24`, pos=1 => result=`3`
+      - substr=`24`, pos=4 => result=`9`
+  - `translate(srcCol,matching,replace)`
+    - translate any character in `srcCol` by a character in `matching`
+    - chars in `matching` that don't have a corresponding val in `replace` become null
+    - example: srcCol=`hello world`, matching=`lew`,replace=`12` => result=`h11o 2or1d`
+  - `overlay(src,replace,pos,len)`
+    - overlay the specified portion of `src` with `replace` starting from byte position `pos` and proceeding for `len` bytes
+    - default of `len` is the length of the `replace` string
+    - this is a blanket replace based on position, not based on matching a string
+    - example: src=`SPARK_SQL`, replace=`CORE`, pos=`7` => result=`SPARK_CORE`
 - regex
+  - `regexp_extract(str,pattern,idx)`
+    - extracts the given pattern from the string; idx is the id of the capture group
+  - `regexp_replace(str,pattern,replacement)`
+    - replace the given pattern with the replacement string
+    - returns empty string if pattern not found
+  - `rlike(pattern)`
+    - Column function - check if a pattern is found
 - date
 - null
 - collection
