@@ -520,14 +520,201 @@ Functions
   - `rlike(pattern)`
     - Column function - check if a pattern is found
 - date
-- null
+  - `current_date` / `current_timestamp`
+  - `next_day(date, dayOfWeek)`
+    - transform a date to the next given day of the week
+  - `last_day`
+    - returns the last day of the month in the provided date
+  - `dayofweek`/`dayofmonth`/`dayofyear`/`weekofyear`
+    - returns which number day of the week/month/year the given date is
+  - `second`/`minute`/`hour`/`month`/`quarter`/`year`
+    - extracts the corresponding value from a date column
+  - `months_between(date1,date2,roundOff=True)`
+    - result is rounded to 8 digits if `roundOff` = True
+  - `date_add`/`date_sub`/`month_add`/`month_sub`
+    - add/subtract a given number of days/months to the date
+  - `date_diff`
+    - find the difference in days between two dates
+  - `date_trunc` / `trunc`
+    - truncated a timestamp to the specified unit
+    - `date_trunc` returns a timestamp, `trunc` returns only a date
+  - `date_format`
+    - apply new format to dates
+  - `unix_timestamp`
+    - make any timestamp a unix timestamp
+  - `to_timestamp` / `to_date`
+    - convert string to timestamp/date
+  - `from_unixtime(timestamp, format)`
+    - convert unix timestamp to equivalent timestamp in current (system) timezone
+  - `from_utc_timestamp(timestmap, tz)`
+    - turns a timezone-agnostic timestamp (UTC timestamp) into a timestamp in the given timezone
+- null/nan handling
+  - `isnull`/`isnan`
+    - true if column val is null/nan
+    - null != nan
+  - `coalesce`
+    - returns first value that's not null from the given columns (nan vals count as _not_ null)
+  - `nanvl`
+    - coalesce with only 2 columns, for nan values only (null vals count as _not_ nan)
+  - `dropna(how, thresh, subset)`
+    - drop rows with null values
+    - how = any, all
+    - thresh => drop rows with *less* than `thresh` non-null values
+    - subset = column names to consider
+  - `fillna(value, subset)`
+    - fill null values with `value`
+    - subset = column names to consider
+  - `na.replace(to_replace, value, subset)`
+    - I don't know if `na.replace` exists anymore? But it seems like this is just a more generic version of `fillna`
+    - `to_replace` can be a dict
 - collection
-- Na
-- math/stats
+  - manipulating collection types: dict, list, struct
+  - `size`
+    - gets the size of the array/map 
+    - `-1` for null elements
+  - `element_at`
+    - gets the element at the given index / key
+  - `struct`
+    - creates a struct column from the given columns
+  - Arrays
+    - `array`
+      - creates new array column from given columns
+    - `array_max` / `array_min`
+      - gets min/max from an array column
+    - `array_distinct`
+      - gets distinct values from array column
+    - `array_repeat`
+      - repeat the array a specified number of times
+    - `flatten`
+      - flattens nested arrays into a single array
+    - `slice(col,start,length)`
+      - get all elements from index `start` for length `length`
+    - `array_position(col, value)`
+      - gets the index of the first occurrence of the given value in the array
+    - `array_remove(col,element)`
+      - removes the given element values from the array
+    - `array_sort`
+      - sorts input array in ascending order
+      - null elements go at the end
+    - `sort_array(col, asc=True)`
+      - sorts in ascending or descending order
+      - ascending = null elements at the beginning
+      - descending = null elements at the end
+    - `array_contains(col, value)`
+      - true if array contains the given value
+      - false if array does not contain the given value
+      - null if col value is null
+    - `array_union`
+      - returns a union of the given 2 columns (without duplicates)
+    - `array_except`
+      - returns array of elements in col1 but not in col2 (without duplicates)
+    - `array_intersect`
+      - returns intersection of elements in given columns (without duplicates)
+    - `array_join(col, delimiter, null_replacement=None)`
+      - concatenates elements in column with delimiter
+      - ignores null vals by default
+    - `array_zip`
+      - merge arrays element-wise
+    - `arrays_overlap`
+      - true if arrays contain any common non-null elements
+      - null if both arrays are non-empty and one contains a null element
+      - false otherwise
+    - `shuffle`
+      - randomly shuffle array elements
+  - Maps
+    - `create_map`
+      - create a new map column
+    - `map_from_entries`
+      - col contains array of paired structs
+      - returns a map from given array of entries
+    - `map_from_arrays`
+      - create a map from 2 arrays
+    - `map_keys`
+      - returns unordered array of map keys
+    - `map_values`
+      - returns unordered array of map values
+    - `map_concat`
+      - returns union of all maps
+  - `sequence(start,stop,step)`
+    - generate a sequence of integers from start to stop, incrementing by 1
+- Math/Stats
+  - `abs`
+    - absolute value
+  - `exp`
+    - exponential of the given value
+  - `factorial`
+    - factorial for the given value
+  - `sqrt`
+    - square root
+  - `cbrt`
+    - cube root
+  - `pow(col1, col2)`
+    - value of `col1` raised to the value of `col2
+  - `floor`/`ceil`
+    - computes floor/ceiling of given value
+  - `round(col, scale)`
+    - round the given value to `scale` decimal places
+  - `signum`
+    - returns flag indicating the value's sign
+    - 1 => n > 0
+    - 0 => n == 0
+    - -1 => n < 0
+  - `corr(col1, col2)`
+    - pearson correlation coefficient 
+  - `covar_pop` / `covar_samp`
+    - population/sample covariance
+  - `var_pop` / `var_samp`
+    - population / sample variance
+    - `variance` alias for `var_samp`
+  - `stddev_pop` / `stddev_samp`
+    - population/sample standard dev
+    - `stddev` alias for `stddev_samp`
 - explode & flatten
+  - `explode`
+    - expands a collection of items so that each item is given its own row
+    - arrays => new column is created to store item value; each item gets its own row
+    - map => 2 new columns created, one for keys & one for values; each kay:value pair gets its own row
+    - ignores null elements
+  - `explode_outer`
+    - normal explode, but doesn't ignore null
+  - `posexplode` / `posexplode_outer`
+    - `explode`/`explode_outer`, but includes a position column in the exploded df that denotes item position in the original array/map
+  - `flatten`
+    - converts a column containing an array of arrays into a single array column
+  - *note*: cannot apply multiple explodes at the same time
+    - it changes the size of the dataframe, so have to do it in sequence
 - formatting
+  - `format_number(col, d)`
+    - returns string of number X formatted to d decimal places w/ HALF_EVEN round mode
+  - round modes
+    - HALF_EVEN:
+      - if fraction is > 0.5, round up
+      - if fraction is < 0.5 round down
+      - if fraction == 0.5, round to nearest even number
+    - HALF_UP: if fraction >= 0.5, round up
+    - HALF_DOWN: if fraction > 0.5, round up
+  - `format_string`
+    - formats arguments using print styling (eg "%d items")
 - JSON
-- other
+  - `from_json(col, schema)`
+    - convert json string into collection
+  - `to_json(col)`
+    - reverse of `from_json`
+  - `json_tuple(col, *field)`
+    - similar to `from_json`, but creates a new column for each given `field` in the json string column instead of a single collection column
+  - `schema_of_json(json_string)`
+    - create the schema automatically from a json string column
+  - `get_json_object`
+    - extract json object from a json string given json path
+    - just look at this [example](https://spark.apache.org/docs/3.1.2/api/python/reference/api/pyspark.sql.functions.get_json_object.html)
+
+### Repartition & Coalesce
+- partition - atomic chunk of data stored on one node in the cluster; the basic unit of parallelism
+- spark automatically partitions data
+- you can configure number of partitions to get an optimal split for you dataset size
+- initally, partitions are created by splitting the data into chunks of the default block size
+  - eg: block size = 128MB, data=500MB, 4 partitions are created
+- If you decrease your dataset size (ie filtering), it may be useful to decrease the number of partitions
 
 ### Extraction
 - csv
