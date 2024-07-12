@@ -716,12 +716,52 @@ Functions
   - eg: block size = 128MB, data=500MB, 4 partitions are created
 - If you decrease your dataset size (ie filtering), it may be useful to decrease the number of partitions
 
+- `repartition(n_paritions, cols)`
+  - spark shuffles data & uses hash paritioning to create almost equal-sized partitions
+  - if decreasing number of paritions, may be better to use coalesce (no shuffling - less data movement)
+    - but actually, repartition might be faster overall because the output will have equal sized partitions, 
+      making subsequent computation faster
+  - `rdd.glom` applies a function to each individual parition
+    - ex: `df.rdd.glob().map(len).collect` gets number of records in each partition
+
+- `coalesce(n_paritions)`
+  - can only reduce the number of partitions
+  - no shuffling, so more efficient that repartition
+  - can create un-evenly sized partitions
+  - lol if you give it a large number of partitions, it just ignores you - no error 
+
 ### Extraction
+I think this just means writing a dataframe?
+to write: `write.save(format="format", *)`
+for get options for a specific format: `help(write.format)`
+
+Options:
+- path
+- mode (what to do if path exists)
+- format
+- compression
+- partitionBy (can pass a column name or an int)
+- other: date/timestamp format, leading/trailing whitespace, etc
+
+Format types:
 - csv
+  - header is off by default
 - text
+  - text files have no schema or columns
+  - you have to append all the data from each row into a single string column
+  - does not support headers
 - parquet
+  - snappy compression by default
 - orc
-- avro
 - json
+- avro
+
+Other extraction commands:
 - hive
+  - `write.insertInto(table_path)`
+    - either appends data to an existing table or overwrites all existing data
+    - table must already exist
+  - `write.saveAsTable(name, format, mode, partitionBy, *)`
+    - default is snappy-compressed parquet
 - jdbc
+  - this is that weird java database - going to ignore this
