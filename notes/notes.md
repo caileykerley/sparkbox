@@ -765,3 +765,158 @@ Other extraction commands:
     - default is snappy-compressed parquet
 - jdbc
   - this is that weird java database - going to ignore this
+
+## Performance and Optimizations
+
+### Join Strategies
+- broadcast
+  - how it works:
+    - broadast (copy) the smaller table to all executors using BitTorrent/peer to peer protocol
+    - perform hash join within each executor
+      - create a hash table of the join keys from the smaller dataset
+      - loop over large dataset and merge the join keys with the hash table
+  - if applicable, most efficient join strategy
+    - each executor has all the info it needs without shuffling
+  - if tables are small enough, spark will automatically perform broadcast join
+    - set table size with `sparl.sql.autoBroadcastJoinThreshold`
+    - default is 10MB
+    - largest size is 8GB
+  - also called map-side join or replicated join
+  - only applicable for == join
+  - supported for all join types except full outer join
+- shuffle hash
+  - how it works:
+    - shuffle phase
+      - both datasets are read and shuffled so that the same keys from each table end up in the same partition
+    - hash join phase
+      - spark picks smaller table and hashes join keys
+      - then does a has join
+  - only applicable for == join
+  - supported for all join types except full outer join
+  - works well when a dataset can not be broadcast but one side of partitioned data is still small enough for hash join
+  - does not work wil data that are heavily skewed (out of memory errors)
+  - join keys do not need to be sortable
+  - expensive since both shuffle & hashing are involved
+- shuffle sort merge
+  - **spark's preferred join type**
+    - can modify this via `spark.sql.join.preferSortMergeJoin`
+  - how it works:
+    - shuffle & sort
+      - shuffle both tables so that join keys are in corresponding partitions
+      - sort keys within each partition
+    - apply merge algorithm
+      - can use any merge type - inner, outer, etc
+  - only supported for == join
+  - supports all join types
+  - join keys must be sortable
+- catesian product
+  - similar to cross-join in sql
+  - how it works:
+    - all partitions from on table sent to all partitions of the other dataset (lots of shuffling)
+    - nested loop join
+      - if M records in table 1 and N records in table 2, nested loop is performed on M*N records
+  - very expensive & high possibility of out-of-memory errors
+  - supports both == and non-equal (!=, <, >=, etc)
+  - supports all join types
+- broadcast nested loop
+  - how it works:
+    - broadcast
+    - nested loop join
+  - very slow, but no shuffling, so preferred to catesian product join
+  - supports both == and non-equal (!=, <, >=, etc)
+  - supports all join types
+
+### Driver Configuration
+
+No heavy computation happens on the driver - those things happen on the executor.
+But `collect()` or `take()` can happen on driver side, so some settings
+will help optimize those operations and avoid out-of-memory errors.
+
+spark-submit options
+- `--driver-memory` (default: 1024M)
+- `--driver-cores` only for cluser mode (default: 1)
+
+configuration properties
+- `spark.driver.memory`
+- `spark.driver.cores`
+- `spark.driver.maxResultSize`
+  - limits spark action (eg collect) size in bytes
+  - jobs are aborted if the size is above this limit
+  - should be at least 1M
+  - 0 for unlimited
+- `spark.driver.memoryOverhead`
+  - default: 10% of driverMemory; minimum is 384 MB
+  - accounts for VM overhead, interned strings, etc
+  - tends to grow with container size
+
+other driver properties are described in the (docs)[https://spark.apache.org/docs/latest/configuration.html]
+
+### Executor Configuration
+- **executor**
+  - created in worker/data nodes
+  - in charge of running tasks for the spark job
+  - each executor is a JVM
+  - launched at the beginning of a spark application & run the entire lifetime of the job
+  - it's better to run fewer executors and give each executor more cores
+  - after task computation complete, result sent to driver
+  - provide in-memory storage for RDD
+  - related spark-submit options
+    - `--executor-memory` default: 1G
+    - `--executor-cores` default: 1
+    - `--num-executors` default: 2
+  - related config options
+    - `spark.executor.memory` default: 1G
+    - `spark.executor.cores` default: 2
+    - `spark.executor.memoryOverhead` 10% or 384 MB, whichever is higher
+  - **important** giving executors multiple cores is what enables parallelism
+  - more executors = more (possibly unnecessary) overhead memory requirements
+  - too many executors can strain memory requirements & requires more copies of shared variables
+
+
+### Parallelism Configurations
+using config to control the number of partitions a shuffle op creates
+
+- `spark.default.parallelism`
+  - only applicable to RDD
+  - default: number of all cores on all nodes in a cluster
+- `spark.sql.shuffle.partitions`
+  - only applicable to DataFrames
+  - default: 200
+
+In general:
+- smaller dataset -> fewer partitions
+- larger dataset -> more partitions
+
+### Memory Management
+- executor's memory consists of:
+  - heap
+    - spark memory (size: `usable_memory * spark.memory.fraction`, default: 75%)
+      - separated into execution memory, storage memory
+        - separation is split viz dynamic occupancy mechanism
+        - basically, if execution needs more memory, it can "borrow" unused memory from storage and disc
+          - execution can also "evict" used memory from storage 
+        - if storage needs more memory, it can borrow unused memory from execution or disc
+          - storage cannot evict used memory from execution
+      - execution memory
+        - size: `spark_memory * (1-spark.memory.storageFraction)`
+        - intermediate objects created during execution of a task
+          - eg hash table for hash joins
+        - cannot stop execution once started
+          - will spill over to disk if not enough execution memory
+      - storage memory
+        - size: `spark_memory * spark.memory.storageFraction`
+        - used to store shared variables, broadcast, accumulator, etc
+        - persisted dataframes/rdd
+        - lru memory algorithm 
+    - user memory (size: `usable_memory * (1-spark.memory.fraction)`, default: 25%)
+      - stores user-defined data structures and functions
+    - reserved memory (size: 300MB - can't change; default: 7%)
+    - `usable_memory`: executor memory - reserved memory
+  - overhead
+    - covered previously
+  - off-heap
+    - outside of JVM, but can be used for intensive jobs
+    - garbage collection has to be done manually
+    - disabled by default
+    - to enable, set `spark.memory.offHeap.size` to desired size
+- 
